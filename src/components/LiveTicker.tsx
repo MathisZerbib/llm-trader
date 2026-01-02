@@ -9,12 +9,17 @@ const LiveTicker: React.FC = () => {
   const trackRef = React.useRef<HTMLDivElement | null>(null)
   const [repeatCount, setRepeatCount] = React.useState(1)
 
+  // Keep the *structure* stable (based on symbols), while values (price/change)
+  // can update without forcing the marquee to re-measure/rebuild.
+  const positionSymbols = React.useMemo(() => positions.map((p) => p.symbol), [positions])
+  const posBySymbol = React.useMemo(() => new Map(positions.map((p) => [p.symbol, p])), [positions])
+
   const baseItems = React.useMemo(() => {
     return [
       { type: 'qqq' as const },
-      ...positions.map((pos) => ({ type: 'pos' as const, symbol: pos.symbol, pos })),
+      ...positionSymbols.map((symbol) => ({ type: 'pos' as const, symbol })),
     ]
-  }, [positions])
+  }, [positionSymbols])
 
   React.useEffect(() => {
     const container = containerRef.current
@@ -40,29 +45,33 @@ const LiveTicker: React.FC = () => {
     ro.observe(container)
     ro.observe(track)
     return () => ro.disconnect()
-  }, [repeatCount, baseItems.length, qqqChange])
+    // Intentionally *not* depending on live values (like qqqChange/price) to avoid
+    // restarting the marquee animation on every refresh.
+  }, [repeatCount, positionSymbols.length])
 
   const renderItem = (item: (typeof baseItems)[number], keyPrefix: string) => {
     if (item.type === 'qqq') {
       return (
         <div key={`${keyPrefix}-qqq`} className="px-6 flex items-center space-x-2 border-r border-white/5">
           <span className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold">NASDAQ (QQQ)</span>
-          <span className={`text-sm font-mono leading-none inline-flex items-center ${qqqChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+          <span className={`text-sm font-mono tabular-nums leading-none inline-flex items-center ${qqqChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
             <span className="inline-block w-3 text-center">{qqqChange >= 0 ? '▲' : '▼'}</span>
-            <span>{Math.abs(qqqChange).toFixed(2)}%</span>
+            <span className="inline-block w-14 text-right">{Math.abs(qqqChange).toFixed(2)}%</span>
           </span>
         </div>
       )
     }
 
-    const pos = item.pos
+    const pos = posBySymbol.get(item.symbol)
     return (
       <div key={`${keyPrefix}-${item.symbol}`} className="px-6 flex items-center space-x-3 border-r border-white/5">
-        <span className="text-[10px] font-bold text-white tracking-widest uppercase">{pos.symbol}</span>
-        <span className="text-zinc-300 font-mono text-xs">${pos.current_price?.toFixed(2)}</span>
-        <span className={`text-xs font-mono leading-none inline-flex items-center ${(pos.change_today || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-          <span className="inline-block w-3 text-center">{(pos.change_today || 0) >= 0 ? '▲' : '▼'}</span>
-          <span>{Math.abs(pos.change_today || 0).toFixed(2)}%</span>
+        <span className="text-[10px] font-bold text-white tracking-widest uppercase">{item.symbol}</span>
+        <span className="text-zinc-300 font-mono tabular-nums text-xs inline-block w-20 text-right">
+          ${pos?.current_price?.toFixed(2) ?? '—'}
+        </span>
+        <span className={`text-xs font-mono tabular-nums leading-none inline-flex items-center ${((pos?.change_today || 0) >= 0) ? 'text-green-400' : 'text-red-400'}`}>
+          <span className="inline-block w-3 text-center">{((pos?.change_today || 0) >= 0) ? '▲' : '▼'}</span>
+          <span className="inline-block w-14 text-right">{Math.abs(pos?.change_today || 0).toFixed(2)}%</span>
         </span>
       </div>
     )

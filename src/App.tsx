@@ -74,18 +74,32 @@ function App() {
   useEffect(() => {
     if (isShortRange(timeRange)) return
 
+    let cancelled = false
+
     const fetchPerformance = async () => {
       try {
-        const perfRes = await axios.get(`http://localhost:8000/performance?period=${timeRange}`)
-        setHttpPerformance(Array.isArray(perfRes.data) ? perfRes.data.slice(-200) : [])
+        const [perfRes, benchRes] = await Promise.all([
+          axios.get(`http://localhost:8000/performance?period=${timeRange}`),
+          axios.get(`http://localhost:8000/benchmark?symbol=QQQ&period=${timeRange}`),
+        ])
 
-        const benchRes = await axios.get(`http://localhost:8000/benchmark?symbol=QQQ&period=${timeRange}`)
+        if (cancelled) return
+
+        setHttpPerformance(Array.isArray(perfRes.data) ? perfRes.data.slice(-200) : [])
         setBenchmark(Array.isArray(benchRes.data) ? benchRes.data : [])
       } catch (error) {
-        console.error("Error fetching performance", error)
+        // Backend may be restarting; keep last known data.
+        console.error('Error fetching performance', error)
       }
     }
+
     fetchPerformance()
+    const interval = setInterval(fetchPerformance, 5000)
+
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+    }
   }, [timeRange])
 
   // Remove unnecessary effect that synchronously clears benchmark

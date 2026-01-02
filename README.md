@@ -6,13 +6,11 @@ Modern React + TypeScript dashboard for **llm-trader**: performance charting, po
 
 \## Badges
 
-> Replace the placeholders below once you have CI/coverage configured.
-
-- Build Status: ![Build](https://img.shields.io/badge/build-not_configured-lightgrey)
-- Code Coverage: ![Coverage](https://img.shields.io/badge/coverage-not_configured-lightgrey)
-- Version: ![Version](https://img.shields.io/badge/version-0.0.0-blue)
-- License: ![License](https://img.shields.io/badge/license-MIT-green)
-- Compatibility: ![Node](https://img.shields.io/badge/node-\u226518-success)
+- CI: [![CI](https://github.com/MathisZerbib/llm-trader/actions/workflows/ci.yml/badge.svg)](https://github.com/MathisZerbib/llm-trader/actions/workflows/ci.yml)
+- Coverage: [![codecov](https://codecov.io/gh/MathisZerbib/llm-trader/branch/main/graph/badge.svg)](https://codecov.io/gh/MathisZerbib/llm-trader)
+- Version: ![Version](https://img.shields.io/github/package-json/v/MathisZerbib/llm-trader)
+- License: ![License](https://img.shields.io/github/license/MathisZerbib/llm-trader)
+- Node: ![Node](https://img.shields.io/badge/node-%3E%3D18-success)
 
 \## Features
 - Real-time dashboard UI (WebSocket + periodic HTTP refresh)

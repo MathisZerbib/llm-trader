@@ -40,7 +40,17 @@ export default function TransactionsTable({ transactions }: TransactionsTablePro
             {transactions.map((tx, idx) => (
               <tr key={idx} className="border-b border-green-900/10 hover:bg-green-900/10">
                 <td className="py-2 text-neon-green">{new Date(tx.timestamp).toLocaleTimeString()}</td>
-                <td className="py-2 font-bold text-white">{tx.side.toUpperCase()}</td>
+                <td
+                  className={`py-2 font-bold ${
+                    tx.side?.toLowerCase() === 'buy'
+                      ? 'text-neon-green'
+                      : tx.side?.toLowerCase() === 'sell'
+                        ? 'text-red-500'
+                        : 'text-white'
+                  }`}
+                >
+                  {tx.side.toUpperCase()}
+                </td>
                 <td className="py-2 text-neon-green">{tx.symbol}</td>
                 <td className="py-2 text-right">{tx.qty}</td>
                 <td className="py-2 text-right text-green-600 pr-6">

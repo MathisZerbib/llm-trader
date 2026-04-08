@@ -144,9 +144,17 @@ function addBenchmarkSeries(data: PerformancePoint[], benchmark: BenchmarkPoint[
 
   const benchByDate = new Map(benchmark.map((b) => [b.date, b.close]))
 
-  // Prefer base close that matches the first portfolio point (so series lines up)
-  const baseCloseMatched = benchByDate.get(data[0].date)
-  const baseClose = baseCloseMatched ?? benchWithTs[0].close
+  const startTs = toEpochMs(data[0].date);
+  let baseClose = benchWithTs[0].close;
+  if (startTs !== null) {
+    let k = 0;
+    while (k + 1 < benchWithTs.length && benchWithTs[k + 1].ts <= startTs) k++;
+    const a = benchWithTs[k];
+    const b = Math.min(k + 1, benchWithTs.length - 1);
+    const bt = benchWithTs[b];
+    baseClose = Math.abs(a.ts - startTs) <= Math.abs(bt.ts - startTs) ? a.close : bt.close;
+  }
+
   const safeBaseClose = baseClose === 0 ? 1 : baseClose
 
   let j = 0

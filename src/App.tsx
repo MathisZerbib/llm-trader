@@ -24,6 +24,33 @@ interface BenchmarkPoint {
 
 type LivePoint = { ts: number; equity: number; pnl: number }
 
+type LlmSettings = {
+  provider: string
+  grok_model: string
+  local_model: string
+  local_url: string
+  active_engine: string
+  recommended_grok_model?: string
+  openrouter_available?: boolean
+}
+
+type LocalModel = {
+  key: string
+  display_name: string
+  loaded?: boolean
+}
+
+type LocalModelsPayload = {
+  local_models?: string[]
+  local_models_detail?: LocalModel[]
+  recommended_grok_model?: string
+}
+
+const pickPreferredLocalModel = (models: LocalModel[]) => {
+  if (!models.length) return ''
+  return models.find((model) => model.loaded)?.key || models[0].key
+}
+
 const isShortRange = (range: string) => range === '5S' || range === '15S' || range === '30S' || range === '1m' || range === '5m'
 
 const rangeToMs = (range: string) => {
@@ -59,6 +86,17 @@ function App() {
   const [benchmark, setBenchmark] = useState<BenchmarkPoint[]>([])
   const [selectedPositions, setSelectedPositions] = useState<string[]>([])
   const [holdingsExpanded, setHoldingsExpanded] = useState(false)
+  const [llmSettings, setLlmSettings] = useState<LlmSettings>({
+    provider: 'grok',
+    grok_model: 'x-ai/grok-4.1-fast',
+    local_model: 'local-model',
+    local_url: 'http://host.docker.internal:1234/v1',
+    active_engine: 'grok:x-ai/grok-4.1-fast',
+    recommended_grok_model: 'x-ai/grok-4.1-fast',
+    openrouter_available: false,
+  })
+  const [localModels, setLocalModels] = useState<LocalModel[]>([])
+  const [modelsLoading, setModelsLoading] = useState(false)
 
   const [livePoints, setLivePoints] = useState<LivePoint[]>([])
   const latestEquityRef = useRef<number | null>(null)
@@ -69,6 +107,137 @@ function App() {
       checked ? [...prev, symbol] : prev.filter(s => s !== symbol)
     )
   }
+
+  const loadLocalModels = async (localUrl: string) => {
+    setModelsLoading(true)
+    try {
+      const response = await axios.get('http://localhost:8000/settings/llm/models', {
+        params: { local_url: localUrl },
+      })
+      const payload: LocalModelsPayload = response.data
+
+      const detailModels: LocalModel[] = Array.isArray(payload.local_models_detail)
+        ? payload.local_models_detail
+        : []
+      const nextModels = detailModels.length > 0
+        ? detailModels
+        : (Array.isArray(payload.local_models) ? payload.local_models : []).map((model: string) => ({
+            key: model,
+            display_name: model,
+            loaded: false,
+          }))
+
+      setLocalModels(nextModels)
+
+      const preferredModel = pickPreferredLocalModel(nextModels)
+      if (preferredModel) {
+        setLlmSettings((prev) => {
+          if (prev.provider !== 'local') return prev
+          const modelExists = nextModels.some((model: LocalModel) => model.key === prev.local_model)
+          return modelExists ? prev : { ...prev, local_model: preferredModel }
+        })
+      }
+
+      setLlmSettings((prev) => ({
+        ...prev,
+        recommended_grok_model: payload.recommended_grok_model ?? prev.recommended_grok_model,
+      }))
+    } catch (error) {
+      console.error('Failed to load LM Studio models', error)
+      setLocalModels([])
+    } finally {
+      setModelsLoading(false)
+    }
+  }
+
+  const loadLlmSettings = async () => {
+    try {
+      const res = await axios.get('http://localhost:8000/settings/llm')
+      const nextSettings = { ...llmSettings, ...res.data }
+      setLlmSettings(nextSettings)
+      await loadLocalModels(nextSettings.local_url)
+    } catch (error) {
+      console.error('Failed to load LLM settings', error)
+    }
+  }
+
+  const saveLlmSettings = async () => {
+    try {
+      const res = await axios.post('http://localhost:8000/settings/llm', {
+        provider: llmSettings.provider,
+        grok_model: llmSettings.grok_model,
+        local_model: llmSettings.local_model,
+        local_url: llmSettings.local_url,
+      })
+      const nextSettings = { ...llmSettings, ...res.data }
+      setLlmSettings(nextSettings)
+      await loadLocalModels(nextSettings.local_url)
+      toast.success(`LLM switched to ${res.data.active_engine}`)
+    } catch (error) {
+      console.error('Failed to update LLM settings', error)
+      toast.error('Failed to update model settings')
+    }
+  }
+
+  useEffect(() => {
+    loadLlmSettings()
+    // initial settings bootstrapping only
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    if (llmSettings.provider !== 'local') return
+
+    let cancelled = false
+
+    const refreshLocalModels = async () => {
+      try {
+        setModelsLoading(true)
+        const proxyResponse = await axios.get('http://localhost:8000/settings/llm/models', {
+          params: { local_url: llmSettings.local_url },
+        })
+        const payload: LocalModelsPayload = proxyResponse.data
+
+        if (cancelled) return
+        const detailModels: LocalModel[] = Array.isArray(payload.local_models_detail)
+          ? payload.local_models_detail
+          : []
+        const nextModels = detailModels.length > 0
+          ? detailModels
+          : (Array.isArray(payload.local_models) ? payload.local_models : []).map((model: string) => ({
+              key: model,
+              display_name: model,
+              loaded: false,
+            }))
+
+        setLocalModels(nextModels)
+        const preferredModel = pickPreferredLocalModel(nextModels)
+        if (preferredModel) {
+          setLlmSettings((prev) => {
+            const modelExists = nextModels.some((model: LocalModel) => model.key === prev.local_model)
+            return modelExists ? prev : { ...prev, local_model: preferredModel }
+          })
+        }
+        setLlmSettings((prev) => ({
+          ...prev,
+          recommended_grok_model: payload.recommended_grok_model ?? prev.recommended_grok_model,
+        }))
+      } catch (error) {
+        if (!cancelled) {
+          console.error('Failed to refresh LM Studio models', error)
+          setLocalModels([])
+        }
+      } finally {
+        if (!cancelled) setModelsLoading(false)
+      }
+    }
+
+    refreshLocalModels()
+
+    return () => {
+      cancelled = true
+    }
+  }, [llmSettings.provider, llmSettings.local_url])
 
 
   useEffect(() => {
@@ -197,7 +366,19 @@ function App() {
   return (
     <div className="min-h-screen bg-black text-neon-green p-6 pb-16 font-mono selection:bg-neon-green selection:text-black">
       <Toaster position="bottom-right" />
-      <DashboardHeader botActive={botActive} marketStatus={marketStatus} onToggleBot={toggleBot} />
+      <DashboardHeader
+        botActive={botActive}
+        marketStatus={marketStatus}
+        onToggleBot={toggleBot}
+        llmSettings={llmSettings}
+        localModels={localModels}
+        modelsLoading={modelsLoading}
+        onProviderChange={(provider) => setLlmSettings((prev) => ({ ...prev, provider }))}
+        onGrokModelChange={(grok_model) => setLlmSettings((prev) => ({ ...prev, grok_model }))}
+        onLocalModelChange={(local_model) => setLlmSettings((prev) => ({ ...prev, local_model }))}
+        onRefreshModels={() => loadLocalModels(llmSettings.local_url)}
+        onApplyModelSettings={saveLlmSettings}
+      />
 
       <div className="grid grid-cols-12 gap-6">
         {/* Left Column (Chart) */}
@@ -228,6 +409,17 @@ function App() {
 
         {/* Right Column */}
         <div className="col-span-12 lg:col-span-4 flex flex-col gap-6">
+          <div className="border border-neon-green/20 bg-black/70 p-4 rounded flex items-center justify-between text-xs text-green-700">
+            <div>
+              <div className="uppercase tracking-[0.2em] text-green-800">Active engine</div>
+              <div className="text-neon-green font-bold mt-1">{llmSettings.active_engine}</div>
+            </div>
+            <div className="text-right">
+              <div className="uppercase tracking-[0.2em] text-green-800">Recommended Grok</div>
+              <div className="text-white font-mono mt-1">{llmSettings.recommended_grok_model || 'x-ai/grok-4.1-fast'}</div>
+            </div>
+          </div>
+
           <div className={`${holdingsExpanded ? 'h-96' : 'h-72'} flex flex-col gap-2`}>
             <ActiveHoldings 
               positions={portfolio?.positions || []}

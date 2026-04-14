@@ -51,6 +51,24 @@ const pickPreferredLocalModel = (models: LocalModel[]) => {
   return models.find((model) => model.loaded)?.key || models[0].key
 }
 
+const normalizeModels = (payload: LocalModelsPayload): LocalModel[] => {
+  const rawModels = Array.isArray(payload.local_models_detail) && payload.local_models_detail.length > 0
+    ? payload.local_models_detail
+    : (Array.isArray(payload.local_models) ? payload.local_models : []);
+
+  return rawModels.map((m: any) => {
+    if (typeof m === 'string') {
+      return { key: m, display_name: m, loaded: false };
+    }
+    return {
+      key: m.key || m.id || '',
+      display_name: m.display_name || m.name || m.id || m.key || '',
+      loaded: !!m.loaded
+    };
+  });
+};
+
+
 const isShortRange = (range: string) => range === '5S' || range === '15S' || range === '30S' || range === '1m' || range === '5m'
 
 const rangeToMs = (range: string) => {
@@ -116,17 +134,7 @@ function App() {
       })
       const payload: LocalModelsPayload = response.data
 
-      const detailModels: LocalModel[] = Array.isArray(payload.local_models_detail)
-        ? payload.local_models_detail
-        : []
-      const nextModels = detailModels.length > 0
-        ? detailModels
-        : (Array.isArray(payload.local_models) ? payload.local_models : []).map((model: string) => ({
-            key: model,
-            display_name: model,
-            loaded: false,
-          }))
-
+      const nextModels = normalizeModels(payload)
       setLocalModels(nextModels)
 
       const preferredModel = pickPreferredLocalModel(nextModels)
@@ -199,17 +207,7 @@ function App() {
         const payload: LocalModelsPayload = proxyResponse.data
 
         if (cancelled) return
-        const detailModels: LocalModel[] = Array.isArray(payload.local_models_detail)
-          ? payload.local_models_detail
-          : []
-        const nextModels = detailModels.length > 0
-          ? detailModels
-          : (Array.isArray(payload.local_models) ? payload.local_models : []).map((model: string) => ({
-              key: model,
-              display_name: model,
-              loaded: false,
-            }))
-
+        const nextModels = normalizeModels(payload)
         setLocalModels(nextModels)
         const preferredModel = pickPreferredLocalModel(nextModels)
         if (preferredModel) {

@@ -32,6 +32,7 @@ type LlmSettings = {
   active_engine: string
   recommended_grok_model?: string
   openrouter_available?: boolean
+  position_monitor_interval_seconds?: number
 }
 
 type LocalModel = {
@@ -177,6 +178,7 @@ function App() {
         grok_model: llmSettings.grok_model,
         local_model: llmSettings.local_model,
         local_url: llmSettings.local_url,
+        position_monitor_interval_seconds: llmSettings.position_monitor_interval_seconds,
       })
 
       const nextSettings = { ...llmSettings, ...res.data }
@@ -394,6 +396,7 @@ function App() {
         onProviderChange={(provider) => setLlmSettings((prev) => ({ ...prev, provider }))}
         onGrokModelChange={(grok_model) => setLlmSettings((prev) => ({ ...prev, grok_model }))}
         onLocalModelChange={(local_model) => setLlmSettings((prev) => ({ ...prev, local_model }))}
+        onIntervalChange={(seconds) => setLlmSettings((prev) => ({ ...prev, position_monitor_interval_seconds: seconds }))}
         onRefreshModels={() => loadLocalModels(llmSettings.local_url)}
         onApplyModelSettings={saveLlmSettings}
       />

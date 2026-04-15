@@ -6,6 +6,7 @@ export interface Position {
   avg_cost?: number
   current_price?: number
   change_today?: number
+  unrealized_plpc?: number
 }
 
 export interface Portfolio {

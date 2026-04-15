@@ -5,6 +5,7 @@ interface Position {
   qty: number
   market_value: number
   unrealized_pl: number
+  unrealized_plpc?: number
   avg_cost?: number
   current_price?: number
 }
@@ -89,11 +90,23 @@ const ActiveHoldings: React.FC<ActiveHoldingsProps> = React.memo(({ positions, s
                       className="accent-neon-green"
                     />
                   </td>
-                  <td className="py-3 font-bold text-neon-green pl-0">{pos.symbol}</td>
+                  <td className="py-3 font-bold text-neon-green pl-0">
+                    <a 
+                      href={`https://app.alpaca.markets/trade/${pos.symbol}?asset_class=stocks`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hover:underline hover:text-white transition-colors"
+                    >
+                      {pos.symbol}
+                    </a>
+                  </td>
                   <td className="py-3 text-right text-gray-400 group-hover:text-gray-300">{pos.qty}</td>
                   <td className="py-3 text-right text-gray-200">${pos.market_value.toLocaleString()}</td>
                   <td className={`py-3 text-right font-mono ${pos.unrealized_pl >= 0 ? 'text-neon-green' : 'text-red-500'}`}>
-                    {pos.unrealized_pl >= 0 ? '+' : ''}{pos.unrealized_pl.toLocaleString()}
+                    {pos.unrealized_pl >= 0 ? '+' : ''}${pos.unrealized_pl.toLocaleString()}
+                    <div className="text-[10px] opacity-70">
+                        {typeof pos.unrealized_plpc === 'number' ? `${pos.unrealized_plpc >= 0 ? '+' : ''}${pos.unrealized_plpc.toFixed(2)}%` : '—'}
+                    </div>
                   </td>
                 </tr>
               ))}

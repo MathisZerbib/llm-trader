@@ -51,7 +51,16 @@ export default function TransactionsTable({ transactions }: TransactionsTablePro
                 >
                   {tx.side.toUpperCase()}
                 </td>
-                <td className="py-2 text-neon-green">{tx.symbol}</td>
+                <td className="py-2 text-neon-green">
+                  <a 
+                    href={`https://app.alpaca.markets/trade/${tx.symbol}?asset_class=stocks`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:underline hover:text-white transition-colors"
+                  >
+                    {tx.symbol}
+                  </a>
+                </td>
                 <td className="py-2 text-right">{tx.qty}</td>
                 <td className="py-2 text-right text-green-600 pr-6">
                   {tx.price > 0 ? `$${tx.price.toFixed(2)}` : <span className="text-yellow-500 text-xs">PENDING</span>}

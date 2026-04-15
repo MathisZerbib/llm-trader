@@ -13,6 +13,7 @@ interface LlmSettings {
   local_url: string
   recommended_grok_model?: string
   active_engine?: string
+  position_monitor_interval_seconds?: number
 }
 
 interface LocalModel {
@@ -31,6 +32,7 @@ interface DashboardHeaderProps {
   onProviderChange?: (provider: string) => void;
   onGrokModelChange?: (model: string) => void;
   onLocalModelChange?: (model: string) => void;
+  onIntervalChange?: (seconds: number) => void;
   onRefreshModels?: () => void;
   onApplyModelSettings?: () => void;
 }
@@ -45,10 +47,12 @@ export default function DashboardHeader({
   onProviderChange,
   onGrokModelChange,
   onLocalModelChange,
+  onIntervalChange,
   onRefreshModels,
   onApplyModelSettings,
 }: DashboardHeaderProps) {
   const [time, setTime] = useState(new Date());
+  const [isEngineOpen, setIsEngineOpen] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
@@ -66,12 +70,12 @@ export default function DashboardHeader({
     if (Number.isNaN(targetMs)) return "—";
 
     const diff = targetMs - time.getTime();
-    if (diff <= 0) return "Processing...";
+    if (diff <= 0) return "PROCESING...";
 
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
 
-    return `${hours}h ${minutes}m`;
+    return `${hours}H ${minutes}M`;
   }, [marketStatus, time]);
 
   const formatTime = (date: Date) => {
@@ -84,123 +88,160 @@ export default function DashboardHeader({
   };
 
   return (
-    <header className="flex justify-between items-center mb-6 border-b border-neon-green/30 pb-4">
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2 border border-neon-green px-3 py-1 rounded">
-          <div className="w-4 h-4 bg-white rounded-full flex items-center justify-center">
-            <span className="text-black text-xs font-bold">S</span>
+    <header className="mb-6 border-b border-green-900/40 pb-4">
+      <div className="flex justify-between items-center gap-6">
+        {/* SITUATION ROOM (LEFT) */}
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 border border-neon-green/50 bg-green-950/10 px-2 py-1">
+            <div className="w-3 h-3 bg-neon-green flex items-center justify-center">
+              <span className="text-black text-[10px] font-bold">G</span>
+            </div>
+            <span className="text-[10px] font-bold tracking-widest text-neon-green">DASHBOARD</span>
           </div>
-          <span className="text-sm font-bold">DASHBOARD</span>
-        </div>
-        
-        {marketStatus && (
-          <div className={`flex items-center gap-2 px-3 py-1 rounded border ${marketStatus.status === 'open' ? 'border-green-500 bg-green-900/20' : 'border-yellow-500 bg-yellow-900/20'}`}>
-            <div className={`w-2 h-2 rounded-full ${marketStatus.status === 'open' ? 'bg-green-500 animate-pulse' : 'bg-yellow-500'}`}></div>
-            <span className={`text-xs font-bold ${marketStatus.status === 'open' ? 'text-green-500' : 'text-yellow-500'}`}>
-              MARKET {marketStatus.status.toUpperCase()}
-            </span>
-            <span className="text-xs text-gray-400 border-l border-gray-700 pl-2">
-              {marketStatus.status === 'open' ? 'CLOSES' : 'OPENS'} IN {timeUntil}
-            </span>
-          </div>
-        )}
-      </div>
-
-      <div className="flex items-center gap-4">
-        {/* <h1 className="text-2xl font-bold tracking-wider text-neon-green">
-          <span className="text-white">GROK TRADER</span> - ANALYTICS
-        </h1> */}
-        {/* <span className="bg-green-900/30 text-neon-green px-2 py-0.5 text-xs rounded border border-neon-green/50">
-          ID: U23147095
-        </span> */}
           
-        <span className={`px-2 py-0.5 text-xs rounded border ${botActive ? 'bg-green-900/30 text-neon-green border-neon-green/50' : 'bg-red-900/30 text-red-500 border-red-500/50'}`}>
-          {botActive ? 'ACTIVE' : 'PAUSED'}
-        </span>
-        {onToggleBot && (
-          <button 
-            onClick={onToggleBot} 
-            className={`px-3 py-1 text-xs font-bold rounded border transition-colors ${
-              botActive 
-                ? 'bg-red-900/20 text-red-500 border-red-500 hover:bg-red-900/40' 
-                : 'bg-neon-green/20 text-neon-green border-neon-green hover:bg-neon-green/40'
+          {marketStatus && (
+            <div className={`flex items-center gap-2 px-2 py-1 border ${marketStatus.status === 'open' ? 'border-green-500/30' : 'border-yellow-500/30'}`}>
+              <div className={`w-1.5 h-1.5 rounded-full ${marketStatus.status === 'open' ? 'bg-green-500 animate-pulse shadow-[0_0_5px_#22c55e]' : 'bg-yellow-500'}`}></div>
+              <span className={`text-[10px] font-bold tracking-tighter ${marketStatus.status === 'open' ? 'text-green-500' : 'text-yellow-500'}`}>
+                {marketStatus.status.toUpperCase()}
+              </span>
+              <span className="text-[10px] text-green-900 font-mono">
+                {timeUntil}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* COMMAND CENTER (MIDDLE) */}
+        <div className="flex items-center gap-3">
+          <div className={`flex items-center gap-2 px-2 py-1 border ${botActive ? 'border-green-800 bg-green-950/20' : 'border-red-900 bg-red-950/20'}`}>
+             <div className={`w-1.5 h-1.5 ${botActive ? 'bg-green-500 shadow-[0_0_8px_#22c55e]' : 'bg-red-500'}`}></div>
+             <span className={`text-[10px] font-bold tracking-[0.2em] ${botActive ? 'text-neon-green' : 'text-red-500'}`}>
+               {botActive ? 'NEURAL_ACTIVE' : 'SYSTEM_PAUSED'}
+             </span>
+          </div>
+
+          {onToggleBot && (
+            <button 
+              onClick={onToggleBot} 
+              className={`px-4 py-1 text-[10px] font-bold tracking-widest border transition-all ${
+                botActive 
+                  ? 'border-red-600 text-red-600 hover:bg-red-950/30' 
+                  : 'border-neon-green text-neon-green hover:bg-green-950/30'
+              }`}
+            >
+              [ {botActive ? 'ABORT_AGENT' : 'INITIALIZE_AGENT'} ]
+            </button>
+          )}
+        </div>
+
+        {/* SYSTEMS & TIME (RIGHT) */}
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-4 font-mono text-[10px] text-green-800">
+            <div className="flex flex-col items-end">
+              <span className="tracking-widest opacity-50">PARIS/CET</span>
+              <span className="text-neon-green font-bold">{formatTime(time)}</span>
+            </div>
+            <div className="flex flex-col items-end border-l border-green-950 pl-4">
+              <span className="tracking-widest opacity-50">NY/EST</span>
+              <span className="text-neon-green font-bold">{new Date(time.getTime() - 6 * 60 * 60 * 1000).toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setIsEngineOpen(!isEngineOpen)}
+            className={`px-3 py-1 text-[10px] font-bold tracking-widest border transition-colors ${
+              isEngineOpen ? 'bg-neon-green text-black border-neon-green' : 'text-green-600 border-green-900 hover:text-neon-green hover:border-green-600'
             }`}
           >
-            [ {botActive ? 'STOP AGENT' : 'EXECUTE AGENT'} ]
+            [ {isEngineOpen ? 'CLOSE_ENGINE' : 'ENGINE_ROOM'} ]
           </button>
-        )}
+        </div>
       </div>
 
-      {llmSettings && (
-        <div className="ml-6 flex items-end gap-3 rounded border border-neon-green/20 bg-black/70 px-3 py-2">
-          <div className="flex flex-col gap-1">
-            <span className="text-[10px] uppercase tracking-[0.2em] text-green-800">Provider</span>
+      {/* ENGINE ROOM PANEL (COLLAPSIBLE) */}
+      {isEngineOpen && llmSettings && (
+        <div className="mt-4 grid grid-cols-12 gap-4 border border-green-900/30 bg-green-950/5 p-3 rounded-sm animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="col-span-2 flex flex-col gap-1">
+            <label className="text-[9px] uppercase tracking-[0.2em] text-green-900 font-bold">LLM_Provider</label>
             <select
               value={llmSettings.provider}
               onChange={(e) => onProviderChange?.(e.target.value)}
-              className="bg-black border border-green-800 text-neon-green text-xs px-2 py-1 rounded outline-none"
+              className="bg-black border border-green-900 text-neon-green text-[10px] px-2 py-1 outline-none hover:border-green-700 transition-colors"
             >
-              <option value="grok">Grok</option>
-              <option value="local">LM Studio</option>
+              <option value="grok">xAI_Grok</option>
+              <option value="local">LM_Studio</option>
             </select>
           </div>
 
-          <div className="flex flex-col gap-1 min-w-0">
-            <span className="text-[10px] uppercase tracking-[0.2em] text-green-800">Model</span>
+          <div className="col-span-4 flex flex-col gap-1">
+            <label className="text-[9px] uppercase tracking-[0.2em] text-green-900 font-bold">Neural_Model_Core</label>
             {llmSettings.provider === 'grok' ? (
               <input
                 value={llmSettings.grok_model}
                 onChange={(e) => onGrokModelChange?.(e.target.value)}
                 placeholder={llmSettings.recommended_grok_model || 'x-ai/grok-4.1-fast'}
-                className="bg-black border border-green-800 text-neon-green text-xs px-2 py-1 rounded outline-none w-64"
+                className="bg-black border border-green-900 text-neon-green text-[10px] px-2 py-1 outline-none w-full hover:border-green-700 transition-colors"
               />
             ) : (
               <select
                 value={llmSettings.local_model}
                 onChange={(e) => onLocalModelChange?.(e.target.value)}
-                className="bg-black border border-green-800 text-neon-green text-xs px-2 py-1 rounded outline-none w-64"
+                className="bg-black border border-green-900 text-neon-green text-[10px] px-2 py-1 outline-none w-full hover:border-green-700 transition-colors"
               >
                 {!localModels.some((model) => model.key === llmSettings.local_model) && llmSettings.local_model && (
-                  <option value={llmSettings.local_model}>{llmSettings.local_model} (current)</option>
+                  <option value={llmSettings.local_model}>{llmSettings.local_model} (*)</option>
                 )}
                 {localModels.length > 0 ? (
                   localModels.map((model) => (
                     <option key={model.key} value={model.key}>
-                      {model.display_name}{model.loaded ? ' (loaded)' : ''}
+                      {model.display_name}{model.loaded ? ' (ACTIVE)' : ''}
                     </option>
                   ))
                 ) : (
-                  <option value={llmSettings.local_model}>No LM Studio models detected</option>
+                  <option value={llmSettings.local_model}>SCANNING_FOR_LOCAL_CORES...</option>
                 )}
               </select>
             )}
           </div>
-
-          {llmSettings.provider === 'local' && onRefreshModels && (
-            <button
-              onClick={onRefreshModels}
-              disabled={modelsLoading}
-              className="px-3 py-1 text-xs font-bold rounded border border-green-800 text-green-600 hover:text-neon-green disabled:opacity-50"
+          
+          <div className="col-span-2 flex flex-col gap-1">
+            <label className="text-[9px] uppercase tracking-[0.2em] text-green-900 font-bold">Audit_Frequency</label>
+            <select
+              value={llmSettings.position_monitor_interval_seconds || 60}
+              onChange={(e) => onIntervalChange?.(parseInt(e.target.value))}
+              className="bg-black border border-green-900 text-neon-green text-[10px] px-2 py-1 outline-none hover:border-green-700 transition-colors"
             >
-              {modelsLoading ? 'REFRESHING' : 'REFRESH'}
-            </button>
-          )}
+              <option value={30}>30_SECONDS</option>
+              <option value={60}>01_MINUTE</option>
+              <option value={300}>05_MINUTES</option>
+              <option value={600}>10_MINUTES</option>
+              <option value={1800}>30_MINUTES</option>
+            </select>
+          </div>
 
-          {onApplyModelSettings && (
-            <button
-              onClick={onApplyModelSettings}
-              className="px-3 py-1 text-xs font-bold rounded border border-neon-green bg-neon-green text-black hover:bg-green-400"
-            >
-              APPLY
-            </button>
-          )}
+          <div className="col-span-4 flex items-end gap-2">
+            {llmSettings.provider === 'local' && onRefreshModels && (
+              <button
+                onClick={onRefreshModels}
+                disabled={modelsLoading}
+                className="flex-1 py-1 text-[10px] font-bold tracking-widest border border-green-800 text-green-700 hover:text-neon-green hover:border-green-600 transition-all disabled:opacity-30"
+              >
+                {modelsLoading ? 'RE-SCANNING...' : 'SYNC_LOCAL_CORES'}
+              </button>
+            )}
+
+            {onApplyModelSettings && (
+              <button
+                onClick={onApplyModelSettings}
+                className="flex-1 py-1 text-[10px] font-bold tracking-widest border border-neon-green bg-green-900/20 text-neon-green hover:bg-neon-green hover:text-black transition-all"
+              >
+                ENGAGE_CONFIG
+              </button>
+            )}
+          </div>
         </div>
       )}
-
-      <div className="flex items-center gap-4 text-sm text-green-700">
-        <span>PARIS {formatTime(time)}</span>
-        <span>NY {new Date(time.getTime() - 6 * 60 * 60 * 1000).toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
-      </div>
     </header>
   );
 }

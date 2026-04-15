@@ -90,13 +90,13 @@ const rangeToMs = (range: string) => {
 
 
 function App() {
-  const { 
-    portfolio, 
-    marketStatus, 
-    agentLogs, 
-    transactions, 
-    botActive, 
-    qqqChange 
+  const {
+    portfolio,
+    marketStatus,
+    agentLogs,
+    transactions,
+    botActive,
+    qqqChange
   } = useWebSocket()
 
   const [timeRange, setTimeRange] = useState<string>("1D")
@@ -171,14 +171,34 @@ function App() {
 
   const saveLlmSettings = async () => {
     try {
+      // 1. Save settings to our backend as usual
       const res = await axios.post('http://localhost:8000/settings/llm', {
         provider: llmSettings.provider,
         grok_model: llmSettings.grok_model,
         local_model: llmSettings.local_model,
         local_url: llmSettings.local_url,
       })
+
       const nextSettings = { ...llmSettings, ...res.data }
       setLlmSettings(nextSettings)
+
+      // 2. If it's LM Studio, trigger the LOAD model API
+      if (llmSettings.provider === 'local' && llmSettings.local_model) {
+        toast.loading(`Loading ${llmSettings.local_model} in LM Studio...`, { id: 'lms-load' })
+        try {
+          await axios.post('http://localhost:8000/api/v1/models/load', {
+            model: llmSettings.local_model,
+            // You can add default parameters here or expose them in UI later
+            context_length: 26000,
+            flash_attention: true
+          })
+          toast.success(`${llmSettings.local_model} loaded successfully`, { id: 'lms-load' })
+        } catch (loadErr: any) {
+          console.error('Failed to load model in LM Studio', loadErr)
+          toast.error(`LM Studio error: ${loadErr.response?.data?.detail || loadErr.message}`, { id: 'lms-load' })
+        }
+      }
+
       await loadLocalModels(nextSettings.local_url)
       toast.success(`LLM switched to ${res.data.active_engine}`)
     } catch (error) {
@@ -326,10 +346,10 @@ function App() {
       } else {
         // START AGENT (Enable + Run Once)
         await axios.post('http://localhost:8000/bot/start')
-        
+
         // Trigger immediate run
         await axios.post('http://localhost:8000/run-agent')
-        
+
         toast.success('Agent Started & Executing...', {
           style: { background: '#000', color: '#0f0', border: '1px solid #0f0' },
           iconTheme: { primary: '#0f0', secondary: '#000' },
@@ -383,18 +403,18 @@ function App() {
         <div className="col-span-12 lg:col-span-8 flex flex-col gap-6">
           <div className="h-96">
             <Suspense fallback={<div className="h-full flex items-center justify-center border border-neon-green/30 text-green-700">INITIALIZING VISUALIZATION...</div>}>
-              <PerformanceChart 
-                data={performance} 
-                timeRange={timeRange} 
-                onTimeRangeChange={setTimeRange} 
+              <PerformanceChart
+                data={performance}
+                timeRange={timeRange}
+                onTimeRangeChange={setTimeRange}
                 qqqChange={qqqChange}
                 benchmark={benchmark}
               />
             </Suspense>
           </div>
-          
-          <PortfolioBalance 
-            equity={portfolio?.equity || 0} 
+
+          <PortfolioBalance
+            equity={portfolio?.equity || 0}
             buyingPower={portfolio?.buying_power || 0}
             initialCapital={portfolio?.initial_capital || 0}
             unrealizedPL={portfolio?.positions.reduce((acc, p) => acc + p.unrealized_pl, 0) || 0}
@@ -419,7 +439,7 @@ function App() {
           </div>
 
           <div className={`${holdingsExpanded ? 'h-96' : 'h-72'} flex flex-col gap-2`}>
-            <ActiveHoldings 
+            <ActiveHoldings
               positions={portfolio?.positions || []}
               selected={selectedPositions}
               onSelect={handleSelectPosition}
@@ -454,13 +474,13 @@ function App() {
               Sell Position{selectedPositions.length > 1 ? 's' : ''}
             </button>
           </div>
-          
+
           <div className="flex-1 min-h-96">
             <LogPanel logs={logs} />
           </div>
         </div>
       </div>
-      
+
       {/* Footer / Status Bar */}
       <div className="mt-6 flex justify-between text-xs text-green-800 border-t border-green-900/30 pt-2">
         <div className="flex gap-4">

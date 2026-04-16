@@ -44,6 +44,7 @@ export interface WebSocketContextType {
   agentLogs: AgentLog[]
   transactions: Transaction[]
   botActive: boolean
+  tradingLocked: boolean
   qqqChange: number
   isConnected: boolean
 }

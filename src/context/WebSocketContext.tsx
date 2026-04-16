@@ -9,6 +9,7 @@ export const WebSocketProvider: React.FC<{ children: ReactNode }> = ({ children 
   const [agentLogs, setAgentLogs] = useState<AgentLog[]>([])
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [botActive, setBotActive] = useState(false)
+  const [tradingLocked, setTradingLocked] = useState(false)
   const [qqqChange, setQqqChange] = useState(0)
   const [isConnected, setIsConnected] = useState(false)
 
@@ -22,6 +23,7 @@ export const WebSocketProvider: React.FC<{ children: ReactNode }> = ({ children 
         const rootRes = await fetch('http://127.0.0.1:8000/')
         const rootData = await rootRes.json()
         setBotActive(rootData.bot_active)
+        setTradingLocked(rootData.trading_locked || false)
         setMarketStatus({
           status: rootData.market_status,
           next_open: rootData.next_open,
@@ -80,6 +82,7 @@ export const WebSocketProvider: React.FC<{ children: ReactNode }> = ({ children 
           
           if (msg.type === 'state') {
             setBotActive(msg.bot_active)
+            setTradingLocked(msg.trading_locked || false)
             setMarketStatus({
               status: msg.market_status,
               next_open: msg.next_open,
@@ -140,6 +143,7 @@ export const WebSocketProvider: React.FC<{ children: ReactNode }> = ({ children 
       agentLogs,
       transactions,
       botActive,
+      tradingLocked,
       qqqChange,
       isConnected
     }}>

@@ -97,6 +97,7 @@ function App() {
     agentLogs,
     transactions,
     botActive,
+    tradingLocked,
     qqqChange
   } = useWebSocket()
 
@@ -365,6 +366,27 @@ function App() {
     }
   }
 
+  const toggleLock = async () => {
+    try {
+      if (tradingLocked) {
+        await axios.post('http://localhost:8000/bot/unlock')
+        toast.success('TRADING UNLOCKED: Neural Refill Active', {
+          style: { background: '#000', color: '#0f0', border: '1px solid #0f0' },
+          icon: '🔓'
+        })
+      } else {
+        await axios.post('http://localhost:8000/bot/lock')
+        toast.success('TRADING LOCKED: Guardrail Mode Active', {
+          style: { background: '#000', color: '#f00', border: '1px solid #f00' },
+          icon: '🔒'
+        })
+      }
+    } catch (error) {
+      console.error("Error toggling lock", error)
+      toast.error('Failed to update control lock')
+    }
+  }
+
   // Transform transactions and logs for the LogPanel
   const combinedLogs = [
     ...transactions.map(tx => ({
@@ -445,6 +467,8 @@ function App() {
             <ActiveHoldings
               positions={portfolio?.positions || []}
               selected={selectedPositions}
+              tradingLocked={tradingLocked}
+              onToggleLock={toggleLock}
               onSelect={handleSelectPosition}
               onSelectAll={(symbols, checked) => setSelectedPositions(checked ? symbols : [])}
               expanded={holdingsExpanded}

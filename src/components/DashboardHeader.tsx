@@ -14,6 +14,12 @@ interface LlmSettings {
   recommended_grok_model?: string
   active_engine?: string
   position_monitor_interval_seconds?: number
+  take_profit_percentage?: number
+  stop_loss_percentage?: number
+  daily_drawdown_threshold?: number
+  web_research_enabled?: boolean
+  web_research_max_tickers?: number
+  web_research_days?: number
 }
 
 interface LocalModel {
@@ -33,6 +39,7 @@ interface DashboardHeaderProps {
   onGrokModelChange?: (model: string) => void;
   onLocalModelChange?: (model: string) => void;
   onIntervalChange?: (seconds: number) => void;
+  onSettingsChange?: (settings: Partial<LlmSettings>) => void;
   onRefreshModels?: () => void;
   onApplyModelSettings?: () => void;
 }
@@ -48,6 +55,7 @@ export default function DashboardHeader({
   onGrokModelChange,
   onLocalModelChange,
   onIntervalChange,
+  onSettingsChange,
   onRefreshModels,
   onApplyModelSettings,
 }: DashboardHeaderProps) {
@@ -159,6 +167,19 @@ export default function DashboardHeader({
         </div>
       </div>
 
+      {/* MARKET CLOSED BANNER */}
+      {marketStatus && marketStatus.status !== 'open' && (
+        <div className="mt-3 flex items-center gap-3 border border-yellow-900/50 bg-yellow-950/10 px-3 py-1.5">
+          <div className="w-1.5 h-1.5 rounded-full bg-yellow-500/70"></div>
+          <span className="text-[9px] font-bold tracking-[0.25em] text-yellow-600/80">
+            MARKET_CLOSED — POSITION_MONITOR &amp; LLM_CALLS SUSPENDED
+          </span>
+          <span className="ml-auto text-[9px] font-mono text-yellow-900/70">
+            OPENS_IN: {timeUntil}
+          </span>
+        </div>
+      )}
+
       {/* ENGINE ROOM PANEL (COLLAPSIBLE) */}
       {isEngineOpen && llmSettings && (
         <div className="mt-4 grid grid-cols-12 gap-4 border border-green-900/30 bg-green-950/5 p-3 rounded-sm animate-in fade-in slide-in-from-top-2 duration-200">
@@ -239,6 +260,74 @@ export default function DashboardHeader({
                 ENGAGE_CONFIG
               </button>
             )}
+          </div>
+
+          {/* BOT BEHAVIOR SUB-PANEL */}
+          <div className="col-span-12 mt-2 pt-2 border-t border-green-900/20 grid grid-cols-12 gap-4">
+            <div className="col-span-2 flex flex-col gap-1">
+              <label className="text-[9px] uppercase tracking-[0.2em] text-green-900 font-bold">Take_Profit %</label>
+              <input
+                type="number"
+                step="0.5"
+                value={(llmSettings.take_profit_percentage || 0.05) * 100}
+                onChange={(e) => onSettingsChange?.({ take_profit_percentage: parseFloat(e.target.value) / 100 })}
+                className="bg-black border border-green-900 text-neon-green text-[10px] px-2 py-1 outline-none hover:border-green-700 transition-colors"
+              />
+            </div>
+            
+            <div className="col-span-2 flex flex-col gap-1">
+              <label className="text-[9px] uppercase tracking-[0.2em] text-green-900 font-bold">Stop_Loss %</label>
+              <input
+                type="number"
+                step="0.5"
+                value={(llmSettings.stop_loss_percentage || -0.03) * 100}
+                onChange={(e) => onSettingsChange?.({ stop_loss_percentage: parseFloat(e.target.value) / 100 })}
+                className="bg-black border border-green-900 text-neon-green text-[10px] px-2 py-1 outline-none hover:border-green-700 transition-colors"
+              />
+            </div>
+
+            <div className="col-span-2 flex flex-col gap-1">
+              <label className="text-[9px] uppercase tracking-[0.2em] text-green-900 font-bold">Max_Drawdown %</label>
+              <input
+                type="number"
+                step="0.5"
+                value={(llmSettings.daily_drawdown_threshold || -0.03) * 100}
+                onChange={(e) => onSettingsChange?.({ daily_drawdown_threshold: parseFloat(e.target.value) / 100 })}
+                className="bg-black border border-green-900 text-neon-green text-[10px] px-2 py-1 outline-none hover:border-green-700 transition-colors"
+              />
+            </div>
+
+            <div className="col-span-2 flex flex-col gap-1">
+              <label className="text-[9px] uppercase tracking-[0.2em] text-green-900 font-bold">Web_Research</label>
+              <select
+                value={llmSettings.web_research_enabled ? 'true' : 'false'}
+                onChange={(e) => onSettingsChange?.({ web_research_enabled: e.target.value === 'true' })}
+                className="bg-black border border-green-900 text-neon-green text-[10px] px-2 py-1 outline-none hover:border-green-700 transition-colors"
+              >
+                <option value="true">ENABLED</option>
+                <option value="false">DISABLED</option>
+              </select>
+            </div>
+
+            <div className="col-span-2 flex flex-col gap-1">
+              <label className="text-[9px] uppercase tracking-[0.2em] text-green-900 font-bold">Res_Tickers</label>
+              <input
+                type="number"
+                value={llmSettings.web_research_max_tickers || 3}
+                onChange={(e) => onSettingsChange?.({ web_research_max_tickers: parseInt(e.target.value) })}
+                className="bg-black border border-green-900 text-neon-green text-[10px] px-2 py-1 outline-none hover:border-green-700 transition-colors"
+              />
+            </div>
+
+            <div className="col-span-2 flex flex-col gap-1">
+              <label className="text-[9px] uppercase tracking-[0.2em] text-green-900 font-bold">Res_Days</label>
+              <input
+                type="number"
+                value={llmSettings.web_research_days || 3}
+                onChange={(e) => onSettingsChange?.({ web_research_days: parseInt(e.target.value) })}
+                className="bg-black border border-green-900 text-neon-green text-[10px] px-2 py-1 outline-none hover:border-green-700 transition-colors"
+              />
+            </div>
           </div>
         </div>
       )}

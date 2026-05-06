@@ -33,6 +33,12 @@ type LlmSettings = {
   recommended_grok_model?: string
   openrouter_available?: boolean
   position_monitor_interval_seconds?: number
+  take_profit_percentage?: number
+  stop_loss_percentage?: number
+  daily_drawdown_threshold?: number
+  web_research_enabled?: boolean
+  web_research_max_tickers?: number
+  web_research_days?: number
 }
 
 type LocalModel = {
@@ -180,6 +186,12 @@ function App() {
         local_model: llmSettings.local_model,
         local_url: llmSettings.local_url,
         position_monitor_interval_seconds: llmSettings.position_monitor_interval_seconds,
+        take_profit_percentage: llmSettings.take_profit_percentage,
+        stop_loss_percentage: llmSettings.stop_loss_percentage,
+        daily_drawdown_threshold: llmSettings.daily_drawdown_threshold,
+        web_research_enabled: llmSettings.web_research_enabled,
+        web_research_max_tickers: llmSettings.web_research_max_tickers,
+        web_research_days: llmSettings.web_research_days,
       })
 
       const nextSettings = { ...llmSettings, ...res.data }
@@ -419,6 +431,7 @@ function App() {
         onGrokModelChange={(grok_model) => setLlmSettings((prev) => ({ ...prev, grok_model }))}
         onLocalModelChange={(local_model) => setLlmSettings((prev) => ({ ...prev, local_model }))}
         onIntervalChange={(seconds) => setLlmSettings((prev) => ({ ...prev, position_monitor_interval_seconds: seconds }))}
+        onSettingsChange={(newSettings) => setLlmSettings((prev) => ({ ...prev, ...newSettings }))}
         onRefreshModels={() => loadLocalModels(llmSettings.local_url)}
         onApplyModelSettings={saveLlmSettings}
       />

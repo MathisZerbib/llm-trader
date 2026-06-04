@@ -458,7 +458,7 @@ function App() {
             unrealizedPL={portfolio?.positions.reduce((acc, p) => acc + p.unrealized_pl, 0) || 0}
           />
 
-          <div className="h-72">
+          <div className="h-[550px]">
             <TransactionsTable transactions={transactions} />
           </div>
         </div>

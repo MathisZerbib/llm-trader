@@ -29,6 +29,8 @@ export interface AgentLog {
 }
 
 export interface Transaction {
+  id?: number
+  order_id?: string
   timestamp: string
   side: string
   symbol: string
